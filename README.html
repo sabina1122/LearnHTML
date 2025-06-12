@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV vs. ICE Vehicle Comparison | Nashik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony Neutrals -->
+    <!-- Application Structure Plan: The SPA uses a "Comparative Dashboard" architecture. The main interaction is a tab-based navigation that allows users to select a specific comparison metric (e.g., Cost, Maintenance). This structure was chosen over a linear report format to empower users to directly access the information most relevant to them, reducing cognitive load. It begins with a high-level summary and key takeaways, then allows for a deep dive into each topic. The centerpiece is an interactive Total Cost of Ownership (TCO) calculator, which personalizes the data and makes the report's findings more tangible and impactful for the user. This non-linear, task-oriented design enhances usability by focusing on the user's primary goal: making a decision. -->
+    <!-- Visualization & Content Choices: The application uses a mix of visualizations and interactive elements tailored to each data type. (1) Emissions: A stacked bar chart (Chart.js) is used to clearly show the breakdown of lifecycle emissions (manufacturing vs. operation), effectively communicating the concept of 'shifted emissions'. (2) Cost/Maintenance/Resale: Simple bar charts (Chart.js) provide clear, at-a-glance comparisons of quantitative data. (3) Depreciation: A line chart (Chart.js) visualizes the value loss over time, a more intuitive representation than static numbers. (4) Major Repairs: A floating bar chart (Chart.js) effectively visualizes the cost *range*, capturing the uncertainty in repair expenses. (5) TCO Calculator: An interactive HTML slider provides a personalized, engaging way for users to see how their driving habits impact long-term costs. All choices prioritize clarity and user interaction, using Chart.js on Canvas, adhering to the NO SVG/Mermaid constraint. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F5F5F4; }
+        .tab-button { transition: all 0.3s ease; }
+        .tab-button.active { background-color: #F97316; color: white; }
+        .tab-button:not(.active) { background-color: #E5E7EB; color: #374151; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .tco-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; background: #F97316; cursor: pointer; border-radius: 50%; }
+        .tco-slider::-moz-range-thumb { width: 24px; height: 24px; background: #F97316; cursor: pointer; border-radius: 50%; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-5xl font-bold text-stone-900 mb-2">EV vs. ICE Vehicle</h1>
+            <p class="text-lg md:text-xl text-stone-600">An Interactive Comparison for Buyers in Nashik</p>
+        </header>
+
+        <main>
+            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-8">
+                 <div class="text-center mb-8">
+                    <p class="text-stone-700 max-w-3xl mx-auto">
+                        Choosing a new car involves balancing costs, environmental impact, and long-term value. This interactive tool analyzes the key differences between Electric (EV) and Internal Combustion Engine (ICE) vehicles based on data for Nashik. Use the tabs below to explore each comparison point and the calculator to find your personalized Total Cost of Ownership.
+                    </p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2 md:gap-3 mb-8" id="tab-navigation">
+                    <button class="tab-button text-sm md:text-base font-semibold py-2 px-4 rounded-full active" data-tab="cost">💰 Cost per km</button>
+                    <button class="tab-button text-sm md:text-base font-semibold py-2 px-4 rounded-full" data-tab="maintenance">🔧 Maintenance</button>
+                    <button class="tab-button text-sm md:text-base font-semibold py-2 px-4 rounded-full" data-tab="resale">📉 Resale & Deprec.</button>
+                    <button class="tab-button text-sm md:text-base font-semibold py-2 px-4 rounded-full" data-tab="repairs">🔩 Major Repairs</button>
+                    <button class="tab-button text-sm md:text-base font-semibold py-2 px-4 rounded-full" data-tab="insurance">🛡️ Insurance</button>
+                    <button class="tab-button text-sm md:text-base font-semibold py-2 px-4 rounded-full" data-tab="emissions">🌍 Emissions</button>
+                </div>
+
+                <div id="tab-content" class="fade-in">
+                    <div id="cost-content" class="content-section active">
+                        <h3 class="text-2xl font-bold text-center mb-2">Running Cost per Kilometer</h3>
+                        <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">This chart shows the estimated fuel/electricity cost to drive one kilometer in Nashik. EVs, especially when charged at home, offer a significant running cost advantage.</p>
+                        <div class="chart-container">
+                            <canvas id="costChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="maintenance-content" class="content-section">
+                        <h3 class="text-2xl font-bold text-center mb-2">5-Year Maintenance Cost</h3>
+                        <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">EVs have fewer moving parts, no oil changes, and less brake wear, leading to substantially lower routine maintenance costs over a typical ownership period.</p>
+                         <div class="chart-container">
+                            <canvas id="maintenanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="resale-content" class="content-section">
+                        <h3 class="text-2xl font-bold text-center mb-2">Depreciation & Resale Value</h3>
+                        <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">This visualization compares how the value of each vehicle type changes over 5 years. ICE vehicles currently have a more predictable and higher resale value, while EVs depreciate faster due to rapid technological advancements and battery concerns.</p>
+                        <div class="chart-container">
+                            <canvas id="depreciationChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div id="repairs-content" class="content-section">
+                        <h3 class="text-2xl font-bold text-center mb-2">Major Repair Cost Ranges</h3>
+                         <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">Both vehicle types have a single, high-cost component. This chart compares the estimated cost range for the most significant potential repair: a battery replacement for an EV versus a full engine overhaul for an ICE vehicle. Note that EV battery costs are projected to decrease significantly over time.</p>
+                        <div class="chart-container">
+                            <canvas id="repairChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="insurance-content" class="content-section">
+                        <h3 class="text-2xl font-bold text-center mb-2">Annual Insurance Premiums</h3>
+                         <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">While third-party premiums can be lower for EVs, the overall comprehensive insurance cost is often higher. This is due to the EV's higher initial price (IDV) and the need for expensive add-on covers to protect the battery, which is the vehicle's most costly component.</p>
+                        <div class="chart-container">
+                            <canvas id="insuranceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="emissions-content" class="content-section">
+                        <h3 class="text-2xl font-bold text-center mb-2">Lifecycle Greenhouse Gas Emissions</h3>
+                        <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">This chart breaks down total CO2 equivalent emissions from both manufacturing ("Cradle-to-Gate") and vehicle operation ("Well-to-Wheel"). In India's current coal-heavy energy grid, EVs have higher manufacturing and operational emissions over their lifecycle, shifting the impact from the tailpipe to factories and power plants.</p>
+                        <div class="chart-container">
+                            <canvas id="emissionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h3 class="text-2xl md:text-3xl font-bold text-center mb-2">Interactive 5-Year TCO Calculator</h3>
+                <p class="text-center text-stone-600 mb-6 max-w-2xl mx-auto">Your driving habits are key. Use the slider to set your estimated annual driving distance to see a personalized projection of the Total Cost of Ownership (TCO) over 5 years. TCO includes initial price difference, fuel/electricity, and maintenance.</p>
+                
+                <div class="mb-6">
+                    <label for="kmSlider" class="block text-center font-semibold text-lg mb-2">Annual Driving: <span id="kmValue" class="text-orange-600 font-bold">15,000</span> km</label>
+                    <input type="range" id="kmSlider" min="5000" max="40000" value="15000" step="1000" class="tco-slider w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                    <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6">
+                        <h4 class="text-xl font-semibold mb-2 text-green-800">⚡ Electric Vehicle</h4>
+                        <p class="text-4xl font-bold text-green-600" id="evTco">₹0</p>
+                        <p class="text-sm text-green-700">Estimated 5-Year Total Cost</p>
+                    </div>
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+                        <h4 class="text-xl font-semibold mb-2 text-blue-800">⛽ ICE Vehicle</h4>
+                        <p class="text-4xl font-bold text-blue-600" id="iceTco">₹0</p>
+                        <p class="text-sm text-blue-700">Estimated 5-Year Total Cost</p>
+                    </div>
+                </div>
+                <div class="mt-6 text-center p-4 bg-stone-100 rounded-lg">
+                    <p class="text-lg font-semibold text-stone-800" id="tcoResult">Calculating...</p>
+                </div>
+            </div>
+             <div class="text-center mt-8 p-4 text-xs text-stone-500">
+                <p>Data sourced from the "Comparative Analysis: Electric Vehicles vs. Internal Combustion Engine Vehicles in Nashik" report. All costs are estimates and subject to change. TCO calculation is illustrative.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const contentSections = document.querySelectorAll('.content-section');
+            let activeChart = null;
+            let charts = {};
+
+            const dataStore = {
+                cost: {
+                    labels: ['EV (Home)', 'EV (Public)', 'Diesel', 'Petrol'],
+                    values: [1.04, 2.16, 4.52, 6.30],
+                    colors: ['#10B981', '#6EE7B7', '#60A5FA', '#3B82F6']
+                },
+                maintenance: {
+                    labels: ['EV (5 Yrs)', 'ICE (5 Yrs)'],
+                    values: [30000, 65000], 
+                    colors: ['#10B981', '#6B7280']
+                },
+                depreciation: {
+                    labels: ['Year 0', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'],
+                    ev: [100, 70, 50, 35, 20, 15],
+                    ice: [100, 85, 70, 60, 55, 50]
+                },
+                repairs: {
+                    labels: ['EV Battery', 'ICE Engine'],
+                    values: [[300000, 1200000], [60000, 150000]],
+                    colors: ['#10B981', '#6B7280']
+                },
+                insurance: {
+                    labels: ['Entry', 'Mid-Range', 'Premium'],
+                    ev: [12500, 20000, 32500],
+                    ice: [8500, 12500, 22500],
+                },
+                emissions: {
+                    labels: ['EV', 'Diesel ICEV', 'Petrol ICEV'],
+                    manufacturing: [13.6, 10.1, 9.7],
+                    operation: [24.5, 18.6, 22.6]
+                }
+            };
+            
+            function createCostChart() {
+                const ctx = document.getElementById('costChart').getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataStore.cost.labels,
+                        datasets: [{
+                            label: 'Cost per km (₹)',
+                            data: dataStore.cost.values,
+                            backgroundColor: dataStore.cost.colors,
+                            borderColor: dataStore.cost.colors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Cost in INR (₹)' } } }
+                    }
+                });
+            }
+
+            function createMaintenanceChart() {
+                const ctx = document.getElementById('maintenanceChart').getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataStore.maintenance.labels,
+                        datasets: [{
+                            label: 'Estimated 5-Year Cost (₹)',
+                            data: dataStore.maintenance.values,
+                            backgroundColor: dataStore.maintenance.colors
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Cost in INR (₹)' } } }
+                    }
+                });
+            }
+            
+            function createDepreciationChart() {
+                const ctx = document.getElementById('depreciationChart').getContext('2d');
+                 return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dataStore.depreciation.labels,
+                        datasets: [{
+                            label: 'EV Resale Value',
+                            data: dataStore.depreciation.ev,
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'ICE Resale Value',
+                            data: dataStore.depreciation.ice,
+                            borderColor: '#6B7280',
+                            backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: { y: { beginAtZero: false, max: 100, title: { display: true, text: 'Retained Value (%)' } } }
+                    }
+                });
+            }
+
+            function createRepairChart() {
+                const ctx = document.getElementById('repairChart').getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataStore.repairs.labels,
+                        datasets: [{
+                            label: 'Cost Range (₹)',
+                            data: dataStore.repairs.values,
+                            backgroundColor: dataStore.repairs.colors,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true, title: { display: true, text: 'Cost in INR (₹)' } } }
+                    }
+                });
+            }
+
+            function createInsuranceChart() {
+                const ctx = document.getElementById('insuranceChart').getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataStore.insurance.labels,
+                        datasets: [
+                            {
+                                label: 'EV',
+                                data: dataStore.insurance.ev,
+                                backgroundColor: '#10B981',
+                            },
+                            {
+                                label: 'ICE',
+                                data: dataStore.insurance.ice,
+                                backgroundColor: '#6B7280',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: { y: { beginAtZero: true, title: { display: true, text: 'Estimated Annual Premium (₹)' } } }
+                    }
+                });
+            }
+
+            function createEmissionChart() {
+                const ctx = document.getElementById('emissionChart').getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataStore.emissions.labels,
+                        datasets: [
+                            {
+                                label: 'Manufacturing Emissions',
+                                data: dataStore.emissions.manufacturing,
+                                backgroundColor: '#F97316',
+                            },
+                            {
+                                label: 'Operational Emissions',
+                                data: dataStore.emissions.operation,
+                                backgroundColor: '#6B7280',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: {
+                            x: { stacked: true },
+                            y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Emissions (t CO2eq)' } }
+                        }
+                    }
+                });
+            }
+
+            const chartInitializers = {
+                cost: createCostChart,
+                maintenance: createMaintenanceChart,
+                depreciation: createDepreciationChart,
+                repairs: createRepairChart,
+                insurance: createInsuranceChart,
+                emissions: createEmissionChart,
+            };
+
+            function switchTab(tab) {
+                if (activeChart) {
+                    activeChart.destroy();
+                    activeChart = null;
+                }
+
+                tabButtons.forEach(button => button.classList.remove('active'));
+                document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+                contentSections.forEach(section => section.classList.remove('active'));
+                const activeSection = document.getElementById(`${tab}-content`);
+                activeSection.classList.add('active');
+                
+                document.getElementById('tab-content').classList.remove('fade-in');
+                void document.getElementById('tab-content').offsetWidth;
+                document.getElementById('tab-content').classList.add('fade-in');
+                
+                if (chartInitializers[tab]) {
+                    if (charts[tab]) charts[tab].destroy();
+                    charts[tab] = chartInitializers[tab]();
+                    activeChart = charts[tab];
+                }
+            }
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.dataset.tab;
+                    switchTab(tabName);
+                });
+            });
+            
+            switchTab('cost');
+            
+            const kmSlider = document.getElementById('kmSlider');
+            const kmValue = document.getElementById('kmValue');
+            const evTcoEl = document.getElementById('evTco');
+            const iceTcoEl = document.getElementById('iceTco');
+            const tcoResultEl = document.getElementById('tcoResult');
+
+            function calculateTCO() {
+                const annualKm = parseInt(kmSlider.value);
+                kmValue.textContent = annualKm.toLocaleString('en-IN');
+
+                const initialCostDiff = 300000;
+                
+                const evCostPerKm = 1.04;
+                const iceCostPerKm = 6.30;
+                
+                const evMaintenance5Yrs = dataStore.maintenance.values[0];
+                const iceMaintenance5Yrs = dataStore.maintenance.values[1];
+
+                const evRunningCost5yrs = evCostPerKm * annualKm * 5;
+                const iceRunningCost5yrs = iceCostPerKm * annualKm * 5;
+
+                const evTotalCost = initialCostDiff + evRunningCost5yrs + evMaintenance5Yrs;
+                const iceTotalCost = iceRunningCost5yrs + iceMaintenance5Yrs;
+
+                evTcoEl.textContent = `₹${Math.round(evTotalCost).toLocaleString('en-IN')}`;
+                iceTcoEl.textContent = `₹${Math.round(iceTotalCost).toLocaleString('en-IN')}`;
+
+                const difference = Math.abs(evTotalCost - iceTotalCost);
+                if (evTotalCost < iceTotalCost) {
+                    tcoResultEl.textContent = `Over 5 years, the EV is projected to be ₹${difference.toLocaleString('en-IN')} cheaper.`;
+                } else {
+                    tcoResultEl.textContent = `Over 5 years, the ICE vehicle is projected to be ₹${difference.toLocaleString('en-IN')} cheaper.`;
+                }
+            }
+            
+            kmSlider.addEventListener('input', calculateTCO);
+            calculateTCO();
+        });
+    </script>
+</body>
+</html>
